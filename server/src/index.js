@@ -26,6 +26,9 @@ app.use('/api', userRoutes);
 import eventRoutes from './routes/event.routes.js';
 app.use('/api', eventRoutes);
 
+import swapRequestRoutes from './routes/swapRequest.routes.js';
+app.use('/api', swapRequestRoutes);
+
 
 
 const PORT = process.env.PORT || 4000;
