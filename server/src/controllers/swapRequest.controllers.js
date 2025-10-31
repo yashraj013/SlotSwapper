@@ -19,8 +19,8 @@ const createSwapRequest = async (req, res) => {
   try {
     const { mySlotId, theirSlotId } = req.body;
 
-    const mySlot = await swapRequestModel.findOne({ _id: mySlotId, userId: req.user.id });
-    const theirSlot = await swapRequestModel.findById(theirSlotId);
+    const mySlot = await eventModel.findOne({ _id: mySlotId, userId: req.user.id });
+    const theirSlot = await eventModel.findById(theirSlotId);
 
     if (!mySlot || !theirSlot)
       return res.status(404).json({ message: "Slot not found" });
@@ -60,8 +60,8 @@ const respondToSwapRequest = async (req, res) => {
 
     if (!swap) return res.status(404).json({ message: "Swap request not found" });
 
-    const mySlot = await swapRequestModel.findById(swap.mySlotId);
-    const theirSlot = await swapRequestModel.findById(swap.theirSlotId);
+    const mySlot = await eventModel.findById(swap.mySlotId);
+    const theirSlot = await eventModel.findById(swap.theirSlotId);
 
     if (!mySlot || !theirSlot)
       return res.status(404).json({ message: "Slots not found" });
@@ -98,8 +98,37 @@ const respondToSwapRequest = async (req, res) => {
   }
 };
 
+const getIncomingRequests = async (req, res) => {
+  try {
+    const requests = await swapRequestModel
+      .find({ receiverId: req.user.id })
+      .populate('mySlotId')
+      .populate('theirSlotId')
+      .sort({ createdAt: -1 });
+    res.json(requests);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getOutgoingRequests = async (req, res) => {
+  try {
+    const requests = await swapRequestModel
+      .find({ requesterId: req.user.id })
+      .populate('mySlotId')
+      .populate('theirSlotId')
+      .sort({ createdAt: -1 });
+    res.json(requests);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export {
     getSwappableSlots,
     createSwapRequest,
-    respondToSwapRequest
+    respondToSwapRequest,
+    getOutgoingRequests,
+    getIncomingRequests
+
 };

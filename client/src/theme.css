@@ -41,4 +41,3 @@ body {
 .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; width: min(520px, 92vw); padding: 16px; }
 
 
-

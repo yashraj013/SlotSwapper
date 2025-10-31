@@ -23,4 +23,3 @@ export default function EventCard({ event, children, onToggleSwappable }) {
 }
 
 
-

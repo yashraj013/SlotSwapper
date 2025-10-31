@@ -39,6 +39,3 @@ export default function Requests() {
         </div>
     );
 }
-
-
-

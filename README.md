@@ -59,8 +59,8 @@ Backend
 
 Clone the repo
 
-git clone <https://github.com/yashraj013/SlotSwapper.git>
-cd <SlotSwapper>/server
+git clone https://github.com/yashraj013/SlotSwapper.git
+cd SlotSwapper/server
 
 
 Install dependencies
@@ -68,35 +68,63 @@ Install dependencies
 npm install
 
 
-Create .env 
+Create .env (server/.env)
+
+PORT=4000
+CORS_ORIGIN=http://localhost:5173
+MONGODB_URI=mongodb://localhost:27017
+JWT_SECRET=change-me
 
 Start server (development)
 
 npm run dev
 
 
-Server default: http://localhost:3000
+Server default: http://localhost:4000
 
 Frontend
 
 Open a new terminal, go to frontend
 
-cd <SlotSwapper>/frontend
+cd ../client
 npm install
-npm run dev 
+
+
+Optional: create client/.env (for custom API URL)
+
+VITE_API_URL=http://localhost:4000/api
+
+Start frontend (development)
+
+npm run dev
+
 
 Frontend default: http://localhost:5173
 
-Environment variables
+API Endpoints (base: /api)
 
-PORT=
-CORS_ORIGIN=
-MONGODB_URI=
-JWT_SECRET=
+Auth
 
-API Endpoints
+POST /user/register
+POST /user/login
+GET  /user/logout
 
-Postman Collection => https://web.postman.co/workspace/My-Workspace~8b854243-c4ef-45ec-86ff-d68ca310eae9/collection/40652536-2c97d00e-dd9b-4055-8b58-cd98c4fcc323?action=share&source=copy-link&creator=40652536
+Events
+
+GET    /event/getEvents
+POST   /event/create
+PUT    /event/update/:id
+DELETE /event/delete/:id
+
+Swap
+
+GET  /swap/slots                # list others’ SWAPPABLE slots
+POST /swap/create               # create a swap request { mySlotId, theirSlotId }
+POST /swap/respond/:requestId   # accept/reject { accept: boolean }
+
+Postman Collection
+
+https://web.postman.co/workspace/My-Workspace~8b854243-c4ef-45ec-86ff-d68ca310eae9/collection/40652536-2c97d00e-dd9b-4055-8b58-cd98c4fcc323?action=share&source=copy-link&creator=40652536
 
 License
 
