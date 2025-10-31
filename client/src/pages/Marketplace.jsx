@@ -1,56 +1,78 @@
-import React, { useEffect, useState } from 'react';
-import api from '../services/api.js';
-import EventCard from '../components/EventCard.jsx';
-import Modal from '../components/Modal.jsx';
+import React, { useEffect, useMemo, useState } from 'react';
+import api from '../services/api';
+import Modal from '../components/Modal';
+
+function Card({ slot, onRequest }){
+  const start = new Date(slot.startTime).toLocaleString();
+  const end = new Date(slot.endTime).toLocaleString();
+  return (
+    <div className="card">
+      <div className="card-title">{slot.title}</div>
+      <div className="card-sub">{start} → {end}</div>
+      <div className="row">
+        <span className="badge swappable">SWAPPABLE</span>
+        <div className="spacer" />
+        <button className="btn primary" onClick={() => onRequest(slot)}>Request Swap</button>
+      </div>
+    </div>
+  );
+}
 
 export default function Marketplace() {
-    const [slots, setSlots] = useState([]);
-    const [myEvents, setMyEvents] = useState([]);
-    const [selected, setSelected] = useState(null);
-    const [offerId, setOfferId] = useState('');
+  const [slots, setSlots] = useState([]);
+  const [mySwappable, setMySwappable] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [chosenMyId, setChosenMyId] = useState('');
+  const [error, setError] = useState('');
 
-    const fetchData = async () => {
-        const [swappable, my] = await Promise.all([
-            api.get('/swap/slots'),
-            api.get('/event/getEvents'),
-        ]);
-        setSlots(swappable.data || []);
-        setMyEvents((my.data || []).filter((e) => e.status === 'SWAPPABLE'));
-    };
+  const fetchSlots = async () => {
+    const { data } = await api.get('/swappable-slots');
+    setSlots(data);
+  };
 
-    useEffect(() => { fetchData(); }, []);
+  const fetchMy = async () => {
+    const { data } = await api.get('/event/getEvents');
+    setMySwappable(data.filter((e) => e.status === 'SWAPPABLE'));
+  };
 
-    const requestSwap = async () => {
-        await api.post('/swap/request', { mySlotId: offerId, theirSlotId: selected._id });
-        setSelected(null); setOfferId('');
-    };
+  useEffect(() => { fetchSlots(); fetchMy(); }, []);
 
-    return (
-        <div className="container">
-            <h2>Marketplace</h2>
-            <div className="grid">
-                {slots.map((ev) => (
-                    <EventCard key={ev._id} event={ev}>
-                        <button className="btn" onClick={() => setSelected(ev)}>Request Swap</button>
-                    </EventCard>
-                ))}
-            </div>
+  const openModal = (slot) => { setSelected(slot); setOpen(true); setChosenMyId(''); setError(''); };
 
-            <Modal open={!!selected} onClose={() => setSelected(null)} title="Offer your slot" footer={
-                <>
-                    <button className="btn secondary" onClick={() => setSelected(null)}>Cancel</button>
-                    <button className="btn" disabled={!offerId} onClick={requestSwap}>Send Request</button>
-                </>
-            }>
-                <div className="row" style={{ flexDirection: 'column', gap: 12 }}>
-                    <select className="input" value={offerId} onChange={(e) => setOfferId(e.target.value)}>
-                        <option value="">Select your swappable slot</option>
-                        {myEvents.map((e) => (
-                            <option key={e._id} value={e._id}>{e.title} ({new Date(e.startTime).toLocaleString()})</option>
-                        ))}
-                    </select>
-                </div>
-            </Modal>
-        </div>
-    );
+  const createRequest = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post('/swap-request', { mySlotId: chosenMyId, theirSlotId: selected._id });
+      setOpen(false);
+      await fetchSlots();
+      await fetchMy();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to create request');
+    }
+  };
+
+  return (
+    <div className="page">
+      <div className="page-header"><h2>Swappable Slots</h2></div>
+      <div className="grid">
+        {slots.map((s) => (<Card key={s._id} slot={s} onRequest={openModal} />))}
+        {slots.length === 0 && <div className="muted">No swappable slots available.</div>}
+      </div>
+
+      <Modal open={open} title="Offer Your Slot" onClose={()=>setOpen(false)}>
+        {error && <div className="error">{error}</div>}
+        <form className="form" onSubmit={createRequest}>
+          <label>Select your swappable slot</label>
+          <select required value={chosenMyId} onChange={(e)=>setChosenMyId(e.target.value)}>
+            <option value="" disabled>Choose one</option>
+            {mySwappable.map((e)=> (
+              <option key={e._id} value={e._id}>{e.title} ({new Date(e.startTime).toLocaleString()})</option>
+            ))}
+          </select>
+          <button className="btn primary">Send Request</button>
+        </form>
+      </Modal>
+    </div>
+  );
 }

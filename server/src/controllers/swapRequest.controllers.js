@@ -7,7 +7,7 @@ const getSwappableSlots = async (req, res) => {
     const swappableSlots = await eventModel.find({
       userId: { $ne: req.user.id },
       status: "SWAPPABLE",
-    }).populate("userId", "name email");
+    }).populate("userId", "username email");
 
     res.json(swappableSlots);
   } catch (error) {
@@ -24,6 +24,10 @@ const createSwapRequest = async (req, res) => {
 
     if (!mySlot || !theirSlot)
       return res.status(404).json({ message: "Slot not found" });
+
+    // prevent self-swap
+    if (theirSlot.userId.toString() === req.user.id)
+      return res.status(400).json({ message: "Cannot swap with your own slot" });
 
     if (mySlot.status !== "SWAPPABLE" || theirSlot.status !== "SWAPPABLE")
       return res.status(400).json({ message: "Slots not swappable" });
@@ -60,11 +64,23 @@ const respondToSwapRequest = async (req, res) => {
 
     if (!swap) return res.status(404).json({ message: "Swap request not found" });
 
-    const mySlot = await eventModel.findById(swap.mySlotId);
-    const theirSlot = await eventModel.findById(swap.theirSlotId);
+    // Only the receiver can respond
+    if (swap.receiverId.toString() !== req.user.id)
+      return res.status(403).json({ message: "Not authorized to respond to this request" });
+
+    // Must be pending
+    if (swap.status !== "PENDING")
+      return res.status(400).json({ message: "Swap request is not pending" });
+
+    const mySlot = swap.mySlotId; // populated doc
+    const theirSlot = swap.theirSlotId; // populated doc
 
     if (!mySlot || !theirSlot)
       return res.status(404).json({ message: "Slots not found" });
+
+    // ensure both are still pending for swap
+    if (accept && (mySlot.status !== "SWAP_PENDING" || theirSlot.status !== "SWAP_PENDING"))
+      return res.status(400).json({ message: "Slots are not pending for swap" });
 
     if (accept) {
       //  Accepted → Swap user ownership
@@ -82,9 +98,9 @@ const respondToSwapRequest = async (req, res) => {
 
       return res.json({ message: "Swap accepted successfully" });
     } else {
-      //  Rejected → revert status
-      mySlot.status = "SWAPPABLE";
-      theirSlot.status = "SWAPPABLE";
+      //  Rejected → revert status only if they were on hold
+      if (mySlot.status === "SWAP_PENDING") mySlot.status = "SWAPPABLE";
+      if (theirSlot.status === "SWAP_PENDING") theirSlot.status = "SWAPPABLE";
       swap.status = "REJECTED";
 
       await mySlot.save();

@@ -21,16 +21,23 @@ async function registerUser (req, res) {
 
     const token = jwt.sign({
         id: user._id,
-    }, process.env.JWT_SECRET)
+    }, process.env.JWT_SECRET, { expiresIn: '7d' })
     
-    res.cookie("token", token)
+    const isProd = process.env.NODE_ENV === 'production';
+    res.cookie("token", token, {
+        httpOnly: true,
+        sameSite: isProd ? 'none' : 'lax',
+        secure: isProd,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+    })
 
     res.status(201).json({
         message: "user register successfully",
+        token,
         user:{
             _id: user._id,
-        email: user.email,
-        username: user.username
+            email: user.email,
+            username: user.username
         }  
     })
 }
@@ -53,12 +60,19 @@ async function loginUser (req, res) {
     // Generate JWT token
     const token = jwt.sign({
         id: user._id,
-    }, process.env.JWT_SECRET);
+    }, process.env.JWT_SECRET, { expiresIn: '7d' });
     
-    res.cookie("token", token);
+    const isProd = process.env.NODE_ENV === 'production';
+    res.cookie("token", token, {
+        httpOnly: true,
+        sameSite: isProd ? 'none' : 'lax',
+        secure: isProd,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
 
     res.status(200).json({
         message: "User logged in successfully",
+        token,
         user: {
             _id: user._id,
             email: user.email,

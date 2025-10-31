@@ -14,6 +14,11 @@ router.get('/swap/slots', authMiddleware, getSwappableSlots);
 router.post('/swap/create', authMiddleware, createSwapRequest);
 router.post('/swap/respond/:requestId', authMiddleware, respondToSwapRequest);
 
+// Spec-aligned aliases for client
+router.get('/swappable-slots', authMiddleware, getSwappableSlots);
+router.post('/swap-request', authMiddleware, createSwapRequest);
+router.post('/swap-response/:requestId', authMiddleware, respondToSwapRequest);
+
 router.get('/swap/incoming', authMiddleware, getIncomingRequests);
 router.get('/swap/outgoing', authMiddleware, getOutgoingRequests);
 

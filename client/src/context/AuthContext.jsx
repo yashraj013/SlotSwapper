@@ -1,68 +1,58 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import api from '../services/api.js';
+import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-    const [token, setToken] = useState(() => localStorage.getItem('token'));
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const [token, setToken] = useState(() => localStorage.getItem('token'));
+  const [user, setUser] = useState(() => {
+    const raw = localStorage.getItem('user');
+    return raw ? JSON.parse(raw) : null;
+  });
 
-    useEffect(() => {
-        if (token) {
-            localStorage.setItem('token', token);
-        } else {
-            localStorage.removeItem('token');
-        }
-    }, [token]);
+  const isAuthenticated = !!token;
 
-    const login = async (email, password) => {
-        setLoading(true);
-        try {
-            const res = await api.post('/user/login', { email, password });
-            // Backend sets httpOnly cookie. Mark client as authenticated locally.
-            setToken(res?.data?.token || 'cookie');
-            setUser(res?.data?.user || null);
-            return { ok: true };
-        } catch (err) {
-            return { ok: false, message: err?.response?.data?.message || 'Login failed' };
-        } finally {
-            setLoading(false);
-        }
-    };
+  const saveSession = (token, user) => {
+    if (token) localStorage.setItem('token', token);
+    if (user) localStorage.setItem('user', JSON.stringify(user));
+    setToken(token);
+    setUser(user);
+  };
 
-    const register = async (payload) => {
-        setLoading(true);
-        try {
-            const res = await api.post('/user/register', payload);
-            // Backend sets httpOnly cookie. Mark client as authenticated locally.
-            setToken(res?.data?.token || 'cookie');
-            setUser(res?.data?.user || null);
-            return { ok: true };
-        } catch (err) {
-            return { ok: false, message: err?.response?.data?.message || 'Registration failed' };
-        } finally {
-            setLoading(false);
-        }
-    };
+  const clearSession = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setToken(null);
+    setUser(null);
+  };
 
-    const logout = async () => {
-        try {
-            await api.get('/user/logout');
-        } catch (_) {}
-        setToken(null);
-        setUser(null);
-    };
+  const register = async (payload) => {
+    const { data } = await api.post('/user/register', payload);
+    saveSession(data.token, data.user);
+    navigate('/dashboard');
+  };
 
-    const value = useMemo(() => ({ token, user, loading, login, register, logout, setUser }), [token, user, loading]);
+  const login = async (payload) => {
+    const { data } = await api.post('/user/login', payload);
+    saveSession(data.token, data.user);
+    navigate('/dashboard');
+  };
 
-    return (
-        <AuthContext.Provider value={value}>
-            {children}
-        </AuthContext.Provider>
-    );
+  const logout = async () => {
+    try { await api.get('/user/logout'); } catch {}
+    clearSession();
+    navigate('/login');
+  };
+
+  const value = useMemo(() => ({ token, user, isAuthenticated, register, login, logout }), [token, user]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export const useAuth = () => useContext(AuthContext);
-
-
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
+}
